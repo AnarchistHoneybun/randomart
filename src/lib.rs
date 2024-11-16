@@ -13,12 +13,13 @@ enum Node {
     Add(Box<Node>, Box<Node>),
     Mult(Box<Node>, Box<Node>),
     Mod(Box<Node>, Box<Node>),
-    Div(Box<Node>, Box<Node>),
     Sqrt(Box<Node>),
     Sin(Box<Node>),
     Cos(Box<Node>),
     Average(Box<Node>, Box<Node>),
     Mix(Box<Node>, Box<Node>, Box<Node>, Box<Node>),
+    Gt(Box<Node>, Box<Node>),
+    If(Box<Node>, Box<Node>, Box<Node>),
 }
 
 impl Node {
@@ -37,15 +38,7 @@ impl Node {
                 } else {
                     a.eval(x, y, t) % b_val
                 }
-            }
-            Node::Div(a, b) => {
-                let b_val = b.eval(x, y, t);
-                if b_val.abs() < 1e-6 {
-                    0.0
-                } else {
-                    a.eval(x, y, t) / b_val
-                }
-            }
+            },
             Node::Sqrt(a) => {
                 let val = a.eval(x, y, t);
                 if val < 0.0 {
@@ -53,7 +46,7 @@ impl Node {
                 } else {
                     val.sqrt()
                 }
-            }
+            },
             Node::Sin(a) => a.eval(x, y, t).sin(),
             Node::Cos(a) => a.eval(x, y, t).cos(),
             Node::Average(a, b) => (a.eval(x, y, t) + b.eval(x, y, t)) / 2.0,
@@ -63,7 +56,21 @@ impl Node {
                 let c_val = c.eval(x, y, t);
                 let d_val = d.eval(x, y, t);
                 (a_val * c_val + b_val * d_val) / (a_val + b_val + 1e-6)
-            }
+            },
+            Node::Gt(a, b) => {
+                if a.eval(x, y, t) > b.eval(x, y, t) {
+                    1.0
+                } else {
+                    0.0
+                }
+            },
+            Node::If(cond, then, else_node) => {
+                if cond.eval(x, y, t) != 0.0 {
+                    then.eval(x, y, t)
+                } else {
+                    else_node.eval(x, y, t)
+                }
+            },
         }
     }
 
@@ -76,7 +83,6 @@ impl Node {
             Node::Add(a, b) => format!("add({}, {})", a.to_string(), b.to_string()),
             Node::Mult(a, b) => format!("mult({}, {})", a.to_string(), b.to_string()),
             Node::Mod(a, b) => format!("mod({}, {})", a.to_string(), b.to_string()),
-            Node::Div(a, b) => format!("div({}, {})", a.to_string(), b.to_string()),
             Node::Sqrt(a) => format!("sqrt({})", a.to_string()),
             Node::Sin(a) => format!("sin({})", a.to_string()),
             Node::Cos(a) => format!("cos({})", a.to_string()),
@@ -87,6 +93,13 @@ impl Node {
                 b.to_string(),
                 c.to_string(),
                 d.to_string()
+            ),
+            Node::Gt(a, b) => format!("gt({}, {})", a.to_string(), b.to_string()),
+            Node::If(cond, then, else_node) => format!(
+                "if({}, {}, {})",
+                cond.to_string(),
+                then.to_string(),
+                else_node.to_string()
             ),
         }
     }
@@ -130,24 +143,29 @@ impl ExpressionGenerator {
                     Box::new(self.gen_expr(depth - 1)),
                     Box::new(self.gen_expr(depth - 1)),
                 ),
-                3 => Node::Div(
+                3 => Node::Sqrt(Box::new(self.gen_expr(depth - 1))),
+                4 => Node::Sin(Box::new(self.gen_expr(depth - 1))),
+                5 => Node::Cos(Box::new(self.gen_expr(depth - 1))),
+                6 => Node::Average(
                     Box::new(self.gen_expr(depth - 1)),
                     Box::new(self.gen_expr(depth - 1)),
                 ),
-                4 => Node::Sqrt(Box::new(self.gen_expr(depth - 1))),
-                5 => Node::Sin(Box::new(self.gen_expr(depth - 1))),
-                6 => Node::Cos(Box::new(self.gen_expr(depth - 1))),
-                7 => Node::Average(
-                    Box::new(self.gen_expr(depth - 1)),
-                    Box::new(self.gen_expr(depth - 1)),
-                ),
-                8 => Node::Mix(
+                7 => Node::Mix(
                     Box::new(self.gen_expr(depth - 1)),
                     Box::new(self.gen_expr(depth - 1)),
                     Box::new(self.gen_expr(depth - 1)),
                     Box::new(self.gen_expr(depth - 1)),
                 ),
-                _ => Node::X,
+                8 => Node::Gt(
+                    Box::new(self.gen_expr(depth - 1)),
+                    Box::new(self.gen_expr(depth - 1)),
+                ),
+                9 => Node::If(
+                    Box::new(self.gen_expr(depth - 1)),
+                    Box::new(self.gen_expr(depth - 1)),
+                    Box::new(self.gen_expr(depth - 1)),
+                ),
+                _ => Node::T,
             }
         }
     }
